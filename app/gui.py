@@ -11,7 +11,7 @@ from app import espota
 from app.api import ApiHandler
 from app.zeroconf_listener import ZeroconfListener
 
-from espota import FLASH,SPIFFS
+from app.espota import FLASH,SPIFFS
 
 class DevicesPanel(wx.ListCtrl):
     def __init__(self, parent):
