@@ -1,7 +1,10 @@
 import random
 from threading import Thread
 import threading
+import serial
 import wx
+import wx.lib.mixins.listctrl
+
 from zeroconf import ServiceBrowser, Zeroconf
 import requests
 import os
@@ -9,23 +12,49 @@ import webbrowser
 
 from app import espota
 from app.api import ApiHandler
+from app.fw_update import FwUpdate
 from app.zeroconf_listener import ZeroconfListener
 
 from app.espota import FLASH,SPIFFS
 
-class DevicesPanel(wx.ListCtrl):
+class SerialPortsComboBox(wx.ComboBox):
+    def __init__(self, parent, fw_update):
+        self.fw_update = fw_update
+        self.ports = serial.tools.list_ports.comports()
+        wx.ComboBox.__init__(self,parent, choices=[port.device for port in self.ports])
+
+class DevicesPanel(wx.ListCtrl,wx.lib.mixins.listctrl.ColumnSorterMixin,    wx.lib.mixins.listctrl.ListCtrlAutoWidthMixin,
+):
     def __init__(self, parent):
         wx.ListCtrl.__init__(self, parent, style=wx.LC_REPORT)
-        self.InsertColumn(0, 'Name', width=150)
-        self.InsertColumn(1, 'Version', width=50)
-        self.InsertColumn(2, 'SW Revision', width=310)
-        self.InsertColumn(3, 'HW Revision', width=130)
-        self.InsertColumn(4, 'IP', width=110)
-        self.InsertColumn(5, 'FS version', width=110)
+        self.column_headings = ["name", "Version", "SW Revision", "HW Revision", "IP", "FS Version"]
+        wx.lib.mixins.listctrl.ColumnSorterMixin.__init__(
+            self,
+            len(self.column_headings),
+        )
+        wx.lib.mixins.listctrl.ListCtrlAutoWidthMixin.__init__(self)
 
+        for column, heading in enumerate(self.column_headings):
+            self.AppendColumn(heading)
+
+        self.itemDataMap = {}
+        
+    def OnSortOrderChanged(self):
+        """Method to handle changes to the sort order"""
+
+        column, ascending = self.GetSortState()
+        self.ShowSortIndicator(column, ascending)
+        self.SortListItems(column, ascending)
+
+    def GetListCtrl(self):
+        """Method required by the ColumnSorterMixin"""
+        return self
+    
 class BTClockOTAUpdater(wx.Frame):
     release_name = ""
     commit_hash = ""
+    currentlyUpdating = False
+    updatingName = ""
 
     def __init__(self, parent, title):
         wx.Frame.__init__(self, parent, title=title, size=(800,500))
@@ -33,7 +62,7 @@ class BTClockOTAUpdater(wx.Frame):
         ubuntu_it = wx.Font(32, wx.FONTFAMILY_MODERN, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD, False, faceName="Ubuntu")
         # "Ubuntu-RI.ttf")
      
-     
+        self.fw_update = FwUpdate()
 
         panel = wx.Panel(self)
 
@@ -41,6 +70,9 @@ class BTClockOTAUpdater(wx.Frame):
         self.title.SetFont(ubuntu_it)
         vbox = wx.BoxSizer(wx.VERTICAL)
         vbox.Add(self.title, 0, wx.EXPAND | wx.ALL, 20, 0)
+
+        # serialPorts = SerialPortsComboBox(panel, self.fw_update)
+        # vbox.Add(serialPorts, 0, wx.EXPAND | wx.ALL, 20, 0)
 
         self.device_list = DevicesPanel(panel)
         self.device_list.Bind(wx.EVT_LIST_ITEM_SELECTED, self.on_item_selected)
@@ -140,6 +172,10 @@ class BTClockOTAUpdater(wx.Frame):
                     self.device_list.SetItem(index, 3, info.properties.get(b"hw_rev").decode())
                 self.device_list.SetItem(index, 4, info.parsed_addresses()[0])
             self.device_list.SetItem(index, 5, self.api_handler.check_fs_hash(info.parsed_addresses()[0]))
+            self.device_list.SetItemData(index, index)
+            self.device_list.itemDataMap[index] = [name, info.properties.get(b"version").decode(), info.properties.get(b"rev").decode(), info.properties.get(b"hw_rev").decode(), info.parsed_addresses()[0]]
+            for col in range(0, len(self.device_list.column_headings)):
+                self.device_list.SetColumnWidth(col, wx.LIST_AUTOSIZE_USEHEADER)
         elif state == "Removed":
             if index != wx.NOT_FOUND:
                 self.device_list.DeleteItem(index)
@@ -180,11 +216,12 @@ class BTClockOTAUpdater(wx.Frame):
         espota.serve(address, "0.0.0.0", 3232, random.randint(10000,60000), "", firmware_file, type, self.call_progress)
 
         wx.CallAfter(self.update_progress, 100)
+        self.currentlyUpdating = False
         self.SetStatusText(f"Finished!")    
 
     def call_progress(self, progress):
         progressPerc = int(progress*100)
-        self.SetStatusText(f"Progress: {progressPerc}%")
+        self.SetStatusText(f"{self.updatingName} - Progress: {progressPerc}%")
         wx.CallAfter(self.update_progress, progress)
 
     def update_progress(self, progress):
@@ -196,6 +233,10 @@ class BTClockOTAUpdater(wx.Frame):
         if selected_index != -1:
             service_name = self.device_list.GetItemText(selected_index, 0)
             info = self.listener.services.get(service_name)
+            if self.currentlyUpdating:
+                wx.MessageBox("Please wait, already updating", "Error", wx.ICON_ERROR)
+                return
+
             if info:
                 address = info.parsed_addresses()[0] if info.parsed_addresses() else "N/A"
                 self.start_fs_update(address)
@@ -213,6 +254,9 @@ class BTClockOTAUpdater(wx.Frame):
 
         local_filename = f"firmware/{self.release_name}_{model_name}_firmware.bin"
 
+        self.updatingName = address
+        self.currentlyUpdating = True
+
         if os.path.exists(os.path.abspath(local_filename)):
             thread = Thread(target=self.run_fs_update, args=(address, os.path.abspath(local_filename), FLASH))
             thread.start()
@@ -221,6 +265,9 @@ class BTClockOTAUpdater(wx.Frame):
         # Path to the firmware file
         self.SetStatusText(f"Starting filesystem update")
         local_filename = f"firmware/{self.release_name}_littlefs.bin"
+
+        self.updatingName = address
+        self.currentlyUpdating = True
 
         if os.path.exists(os.path.abspath(local_filename)):
             thread = Thread(target=self.run_fs_update, args=(address, os.path.abspath(local_filename), SPIFFS))
@@ -267,7 +314,15 @@ class BTClockOTAUpdater(wx.Frame):
                 response = requests.get(ref_url)
                 response.raise_for_status()
                 ref_info = response.json()
-                self.commit_hash = ref_info["object"]["sha"]
+                if (ref_info["object"]["type"] == "commit"):
+                    self.commit_hash = ref_info["object"]["sha"]
+                else:
+                    tag_url = f"https://api.github.com/repos/{repo}/git/tags/{ref_info["object"]["sha"]}"
+                    response = requests.get(tag_url)
+                    response.raise_for_status()
+                    tag_info = response.json()
+                    self.commit_hash = tag_info["object"]["sha"]
+
                 self.fw_label.SetLabelText(f"Downloaded firmware version: {self.release_name}\nCommit: {self.commit_hash}")
 
 
@@ -310,4 +365,4 @@ class BTClockOTAUpdater(wx.Frame):
         dlg.Destroy() 
 
     def OnExit(self,e):
-        self.Close(True)  
+        self.Close(False)  
