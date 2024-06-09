@@ -1,9 +1,14 @@
+import json
 import os
 import requests
 import wx
 from typing import Callable
+from datetime import datetime, timedelta
 
 from app.utils import keep_latest_versions
+
+CACHE_FILE = 'firmware/cache.json'
+CACHE_DURATION = timedelta(minutes=30)
 
 
 class ReleaseChecker:
@@ -14,53 +19,87 @@ class ReleaseChecker:
     def __init__(self):
         self.progress_callback: Callable[[int], None] = None
 
+    def load_cache(self):
+        '''Load cached data from file'''
+        if os.path.exists(CACHE_FILE):
+            with open(CACHE_FILE, 'r') as f:
+                return json.load(f)
+        return {}
+
+    def save_cache(self, cache_data):
+        '''Save cache data to file'''
+        with open(CACHE_FILE, 'w') as f:
+            json.dump(cache_data, f)
+
     def fetch_latest_release(self):
         '''Fetch latest firmware release from GitHub'''
         repo = "btclock/btclock_v3"
+        cache = self.load_cache()
+        now = datetime.now()
 
         if not os.path.exists("firmware"):
             os.makedirs("firmware")
+
+        if 'latest_release' in cache and (now - datetime.fromisoformat(cache['latest_release']['timestamp'])) < CACHE_DURATION:
+            latest_release = cache['latest_release']['data']
+        else:
+            url = f"https://api.github.com/repos/{repo}/releases/latest"
+            try:
+                response = requests.get(url)
+                response.raise_for_status()
+                latest_release = response.json()
+                cache['latest_release'] = {
+                    'data': latest_release,
+                    'timestamp': now.isoformat()
+                }
+                self.save_cache(cache)
+            except requests.RequestException as e:
+                raise ReleaseCheckerException(
+                    f"Error fetching release: {e}") from e
+
+        release_name = latest_release['tag_name']
+        self.release_name = release_name
+
         filenames_to_download = ["lolin_s3_mini_213epd_firmware.bin",
                                  "btclock_rev_b_213epd_firmware.bin", "littlefs.bin"]
-        url = f"https://api.github.com/repos/{repo}/releases/latest"
-        try:
-            response = requests.get(url)
-            response.raise_for_status()
-            latest_release = response.json()
-            release_name = latest_release['tag_name']
-            self.release_name = release_name
 
-            asset_url = None
-            asset_urls = []
-            for asset in latest_release['assets']:
-                if asset['name'] in filenames_to_download:
-                    asset_urls.append(asset['browser_download_url'])
-            if asset_urls:
-                for asset_url in asset_urls:
-                    self.download_file(asset_url, release_name)
-                ref_url = f"https://api.github.com/repos/{
-                    repo}/git/ref/tags/{release_name}"
+        asset_urls = [asset['browser_download_url']
+                      for asset in latest_release['assets'] if asset['name'] in filenames_to_download]
+
+        if asset_urls:
+            for asset_url in asset_urls:
+                self.download_file(asset_url, release_name)
+
+            ref_url = f"https://api.github.com/repos/{
+                repo}/git/ref/tags/{release_name}"
+            if ref_url in cache and (now - datetime.fromisoformat(cache[ref_url]['timestamp'])) < CACHE_DURATION:
+                commit_hash = cache[ref_url]['data']
+
+            else:
                 response = requests.get(ref_url)
                 response.raise_for_status()
                 ref_info = response.json()
-                if (ref_info["object"]["type"] == "commit"):
-                    self.commit_hash = ref_info["object"]["sha"]
+                if ref_info["object"]["type"] == "commit":
+                    commit_hash = ref_info["object"]["sha"]
                 else:
                     tag_url = f"https://api.github.com/repos/{
-                        repo}/git/tags/{ref_info["object"]["sha"]}"
+                        repo}/git/tags/{ref_info['object']['sha']}"
                     response = requests.get(tag_url)
                     response.raise_for_status()
                     tag_info = response.json()
-                    self.commit_hash = tag_info["object"]["sha"]
+                    commit_hash = tag_info["object"]["sha"]
+                cache[ref_url] = {
+                    'data': commit_hash,
+                    'timestamp': now.isoformat()
+                }
+                self.save_cache(cache)
 
-                return self.release_name
+            self.commit_hash = commit_hash
 
-            else:
-                raise ReleaseCheckerException(
-                    f"File {filenames_to_download} not found in latest release")
-        except requests.RequestException as e:
+            return self.release_name
+        else:
             raise ReleaseCheckerException(
-                f"Error fetching release: {e}") from e
+                f"File {filenames_to_download} not found in latest release")
 
     def download_file(self, url, release_name):
         '''Downloads Fimware Files'''

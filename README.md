@@ -1,5 +1,8 @@
 # BTClock OTA Flasher interface
 
+![Screenshot Windows](screenshot-win.webp)
+![Screenshot Mac](screenshot-mac.webp)
+
 ## Instructions
 - Make sure you have Python (tested with Python 3.12)
 - Run `pip3 install -r requirements.txt`
@@ -17,7 +20,7 @@ pyinstaller --hidden-import zeroconf._utils.ipaddress --hidden-import zeroconf._
 ### Windows
 
 ````
-pyinstaller.exe  --hidden-import zeroconf._utils.ipaddress --hidden-import zeroconf._handlers.answers --hidden-import pyserial  -n BTClockOTA --windowed --onefile app.py 
+pyinstaller.exe  BTClockOTA.spec 
 ````
 
 ### Linux 

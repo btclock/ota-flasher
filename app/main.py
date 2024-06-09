@@ -17,6 +17,7 @@ from app.zeroconf_listener import ZeroconfListener
 
 from app.espota import FLASH, SPIFFS
 
+
 class SerialPortsComboBox(wx.ComboBox):
     def __init__(self, parent, fw_update):
         self.fw_update = fw_update
@@ -51,11 +52,11 @@ class BTClockOTAUpdater(wx.Frame):
         self.fw_label = wx.StaticText(
             panel, label=f"Fetching latest version from GitHub...")
         hbox.Add(self.fw_label,  1, wx.EXPAND | wx.ALL, 5)
-        
+
         self.actionButtons = ActionButtonPanel(
             panel, self)
         hbox.AddStretchSpacer()
-        
+
         hbox.Add(self.actionButtons, 2, wx.EXPAND | wx.ALL, 5)
         vbox.Add(hbox, 0, wx.EXPAND | wx.ALL, 20)
 
@@ -95,12 +96,19 @@ class BTClockOTAUpdater(wx.Frame):
                 info.parsed_addresses()[0])
 
             version = info.properties.get(b"rev").decode()
+            fsHash = "Too old"
+            hwRev = "REV_A_EPD_2_13"
 
             if 'gitTag' in deviceSettings:
                 version = deviceSettings["gitTag"]
 
+            if 'fsRev' in deviceSettings:
+                fsHash = deviceSettings['fsRev'][:7]
+
+            if (info.properties.get(b"hw_rev") is not None):
+                hwRev = info.properties.get(b"hw_rev").decode()
+
             fwHash = info.properties.get(b"rev").decode()[:7]
-            fsHash = deviceSettings['fsRev'][:7]
             address = info.parsed_addresses()[0]
 
             if index == wx.NOT_FOUND:
@@ -109,23 +117,19 @@ class BTClockOTAUpdater(wx.Frame):
                 self.device_list.SetItem(index, 0, name)
                 self.device_list.SetItem(index, 1, version)
                 self.device_list.SetItem(index, 2, fwHash)
-                if (info.properties.get(b"hw_rev") is not None):
-                    self.device_list.SetItem(
-                        index, 3, info.properties.get(b"hw_rev").decode())
+                self.device_list.SetItem(index, 3, hwRev)
                 self.device_list.SetItem(index, 4, address)
 
             else:
                 self.device_list.SetItem(index, 0, name)
                 self.device_list.SetItem(index, 1, version)
                 self.device_list.SetItem(index, 2, fwHash)
-                if (info.properties.get(b"hw_rev").decode()):
-                    self.device_list.SetItem(
-                        index, 3, info.properties.get(b"hw_rev").decode())
+                self.device_list.SetItem(index, 3, hwRev)
                 self.device_list.SetItem(index, 4, address)
             self.device_list.SetItem(index, 5, fsHash)
             self.device_list.SetItemData(index, index)
             self.device_list.itemDataMap[index] = [
-                name, version, fwHash, info.properties.get(b"hw_rev").decode(), address, fsHash]
+                name, version, fwHash, hwRev, address, fsHash]
             for col in range(0, len(self.device_list.column_headings)):
                 self.device_list.SetColumnWidth(
                     col, wx.LIST_AUTOSIZE_USEHEADER)
