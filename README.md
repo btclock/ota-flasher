@@ -17,7 +17,7 @@ pyinstaller --hidden-import zeroconf._utils.ipaddress --hidden-import zeroconf._
 ### Windows
 
 ````
-pyinstaller.exe  --hidden-import zeroconf._utils.ipaddress --hidden-import zeroconf._handlers.answers  -n BTClockOTA --windowed app.py`
+pyinstaller.exe  --hidden-import zeroconf._utils.ipaddress --hidden-import zeroconf._handlers.answers --hidden-import pyserial  -n BTClockOTA --windowed --onefile app.py 
 ````
 
 ### Linux 
