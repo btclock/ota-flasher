@@ -29,6 +29,7 @@ jobs:
           pip3 install pyinstaller
           pip3 install --no-cache cffi --no-binary :all:
           pip3 install --no-cache charset_normalizer --no-binary :all:
+          pip3 install -U --pre -f https://wxpython.org/Phoenix/snapshot-builds/ wxPython
           pip3 install -r requirements.txt
       - name: Build with PyInstaller
         run: |
@@ -36,17 +37,23 @@ jobs:
       - name: Get current block
         id: getBlockHeight
         run: echo "blockHeight=$(curl -s https://mempool.space/api/blocks/tip/height)" >> $GITHUB_OUTPUT
+      - name: Create DMG
+        run: |
+          mkdir dmg_temp
+          cp -R dist/BTClockOTA.app dmg_temp/
+          # Create the DMG file
+          hdiutil create -volname "BTClockOTA" -srcfolder dmg_temp -ov -format UDZO "dist/BTClockOTA.dmg"  
       - name: Archive artifacts
         uses: actions/upload-artifact@v4
         with:
           name: macos-artifacts
-          path: dist/
+          path: dist/BTClockOTA.dmg
       - name: Create release
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ steps.getBlockHeight.outputs.blockHeight }}
           commit: main
           name: release-${{ steps.getBlockHeight.outputs.blockHeight }}
-          artifacts: "dist/**"
+          artifacts: "dist/*.dmg"
           allowUpdates: true
           makeLatest: true
