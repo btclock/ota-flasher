@@ -3,20 +3,93 @@ name: Build all artifacts and make release
 on: workflow_dispatch
 
 jobs:
-  prepare:
+  build-macos:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Download universal2 Python
+        run: |
+          curl -o python.pkg https://www.python.org/ftp/python/3.12.4/python-3.12.4-macos11.pkg
+      - name: Install Python
+        run: |
+          sudo installer -pkg python.pkg -target /
+      - name: Add Python to PATH
+        run: |
+          echo "/Library/Frameworks/Python.framework/Versions/3.12/bin" >> $GITHUB_PATH
+      - name: Verify Python installation
+        run: |
+          python3 --version
+          pip3 --version
+      - name: Install dependencies
+        run: |
+          pip3 install --upgrade pip
+          pip3 install pyinstaller
+          pip3 install --no-cache cffi --no-binary :all:
+          pip3 install --no-cache charset_normalizer --no-binary :all:
+          pip3 install -U --pre -f https://wxpython.org/Phoenix/snapshot-builds/ wxPython
+          pip3 install -r requirements.txt
+      - name: Build with PyInstaller
+        run: |
+          pyinstaller BTClockOTA-universal.spec
+      - name: Zip the app bundle
+        run: |
+          cd dist
+          zip -r BTClockOTA-macos-universal2.zip BTClockOTA.app
+      - name: Create DMG
+        run: |
+          mkdir dmg_temp
+          cp -R dist/BTClockOTA.app dmg_temp/
+          # Create the DMG file
+          hdiutil create -volname "BTClockOTA" -srcfolder dmg_temp -ov -format UDZO "dist/BTClockOTA-universal.dmg"
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-artifacts
+          path: |
+            dist/*
+            !dist/BTClockOTA.app
+  build-windows:
+    runs-on:
+      - ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+      - name: Run Docker Container
+        run: |
+          docker run --rm \
+            --volume "${{ github.workspace }}:/src/" \
+            --env SPECFILE=./BTClockOTA.spec \
+            batonogov/pyinstaller-windows:latest
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-artifacts
+          path: dist/
+  release:
+    needs: [build-macos, build-windows]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4     
+        uses: actions/checkout@v4
       - name: Get current block
         id: getBlockHeight
         run: echo "blockHeight=$(curl -s https://mempool.space/api/blocks/tip/height)" >> $GITHUB_OUTPUT
-      - name: Build Windows
-        uses: btclock/ota-flasher/.github/workflows/build_windows.yaml@main   
-      - name: Build macOS
-        uses: btclock/ota-flasher/.github/workflows/build_macos.yaml@main
       - name: Get Windows Artifacts
         if: ${{ always() }}
         uses: actions/download-artifact@v4
