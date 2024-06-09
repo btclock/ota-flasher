@@ -34,9 +34,9 @@ jobs:
       - name: Build with PyInstaller
         run: |
             pyinstaller BTClockOTA-universal.spec
-      - name: Get current block
-        id: getBlockHeight
-        run: echo "blockHeight=$(curl -s https://mempool.space/api/blocks/tip/height)" >> $GITHUB_OUTPUT
+    #   - name: Get current block
+    #     id: getBlockHeight
+    #     run: echo "blockHeight=$(curl -s https://mempool.space/api/blocks/tip/height)" >> $GITHUB_OUTPUT
       - name: Zip the app bundle
         run: |
           cd dist
@@ -54,12 +54,12 @@ jobs:
           path: |
             dist/*
             !dist/BTClockOTA.app
-      - name: Create release
-        uses: ncipollo/release-action@v1
-        with:
-          tag: ${{ steps.getBlockHeight.outputs.blockHeight }}
-          commit: main
-          name: release-${{ steps.getBlockHeight.outputs.blockHeight }}
-          artifacts: "dist/*.dmg,dist/*.zip"
-          allowUpdates: true
-          makeLatest: true
+    #   - name: Create release
+    #     uses: ncipollo/release-action@v1
+    #     with:
+    #       tag: ${{ steps.getBlockHeight.outputs.blockHeight }}
+    #       commit: main
+    #       name: release-${{ steps.getBlockHeight.outputs.blockHeight }}
+    #       artifacts: "dist/*.dmg,dist/*.zip"
+    #       allowUpdates: true
+    #       makeLatest: true

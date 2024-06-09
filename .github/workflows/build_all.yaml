@@ -1,0 +1,38 @@
+name: Build all artifacts and make release
+
+on: workflow_dispatch
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Get current block
+        id: getBlockHeight
+        run: echo "blockHeight=$(curl -s https://mempool.space/api/blocks/tip/height)" >> $GITHUB_OUTPUT
+      - name: Build Windows
+        uses: ./.github/workflows/build_windows
+      - name: Build macOS
+        uses: ./.github/workflows/build_macos
+      - name: Get Windows Artifacts
+        if: ${{ always() }}
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-artifacts
+          path: windows
+      - name: Get Job 1 Artifacts
+        if: ${{ always() }}
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-artifacts
+          path: macos
+      - name: Create release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.getBlockHeight.outputs.blockHeight }}
+          commit: main
+          name: release-${{ steps.getBlockHeight.outputs.blockHeight }}
+          artifacts: "macos/**/*.dmg,macos/**/*.zip,windows/**/*.exe"
+          allowUpdates: true
+          makeLatest: true
