@@ -37,7 +37,7 @@ jobs:
       run: |
         docker run --rm \
           --volume "${{ github.workspace }}:/src/" \
-          batonogov/pyinstaller-windows:latest pyinstaller
+          batonogov/pyinstaller-windows:latest
     - name: Archive artifacts
       uses: actions/upload-artifact@v4
       with:
