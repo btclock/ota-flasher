@@ -14,9 +14,9 @@ jobs:
         id: getBlockHeight
         run: echo "blockHeight=$(curl -s https://mempool.space/api/blocks/tip/height)" >> $GITHUB_OUTPUT
       - name: Build Windows
-        uses: ./.github/workflows/build_windows.yml
+        uses: ./.github/workflows/build_windows.yaml
       - name: Build macOS
-        uses: ./.github/workflows/build_macos.yml
+        uses: ./.github/workflows/build_macos.yaml
       - name: Get Windows Artifacts
         if: ${{ always() }}
         uses: actions/download-artifact@v4
