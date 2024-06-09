@@ -3,9 +3,8 @@ name: Build macOS artifacts and make release
 on: workflow_dispatch
 
 jobs:
-  build-windows:
-    runs-on:
-      - ubuntu-latest
+  build-macos:
+    runs-on: macos-latest
     permissions:
       contents: write
     steps:
