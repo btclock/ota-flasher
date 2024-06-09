@@ -1,4 +1,4 @@
-name: Build artifacts and make release
+name: Build Windows artifacts and make release
 
 on: workflow_dispatch
 

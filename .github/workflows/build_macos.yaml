@@ -1,0 +1,51 @@
+name: Build macOS artifacts and make release
+
+on: workflow_dispatch
+
+jobs:
+  build-windows:
+    runs-on:
+      - ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Download universal2 Python
+        run: |
+          curl -o python.pkg https://www.python.org/ftp/python/3.12.4/python-3.12.4-macos11.pkg
+      - name: Install Python
+        run: |
+          sudo installer -pkg python.pkg -target /
+      - name: Add Python to PATH
+        run: |
+          echo "/Library/Frameworks/Python.framework/Versions/3.12/bin" >> $GITHUB_PATH
+      - name: Verify Python installation
+        run: |
+          python3 --version
+          pip3 --version
+      - name: Install dependencies
+        run: |
+          pip3 install --upgrade pip
+          pip3 install pyinstaller
+          pip3 install -r requirements.txt
+      - name: Build with PyInstaller
+        run: |
+            pyinstaller BTClockOTA-universal.spec
+      - name: Get current block
+        id: getBlockHeight
+        run: echo "blockHeight=$(curl -s https://mempool.space/api/blocks/tip/height)" >> $GITHUB_OUTPUT
+      - name: Archive artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-artifacts
+          path: dist/
+      - name: Create release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.getBlockHeight.outputs.blockHeight }}
+          commit: main
+          name: release-${{ steps.getBlockHeight.outputs.blockHeight }}
+          artifacts: "dist/**"
+          allowUpdates: true
+          makeLatest: true
