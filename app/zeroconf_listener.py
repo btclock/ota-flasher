@@ -1,7 +1,9 @@
 import wx
-from zeroconf import Zeroconf, ServiceBrowser, ServiceStateChange
+from zeroconf import Zeroconf
+
 
 class ZeroconfListener:
+    '''Zeroconf Handler to find BTClocks in the network'''
     release_name = ""
     firmware_file = ""
 

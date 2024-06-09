@@ -1,6 +1,6 @@
 import wx
 
-from app.gui import BTClockOTAUpdater
+from app.main import BTClockOTAUpdater
 
 app = wx.App(False)
 frame = BTClockOTAUpdater(None, 'BTClock OTA updater')
