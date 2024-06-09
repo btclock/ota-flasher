@@ -1,0 +1,33 @@
+name: Build artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      directory:
+        description: 'Directory to run Docker command in'
+        required: true
+        default: '.'
+
+jobs:
+  build-windows:
+    runs-on:
+      - ubuntu-latest
+    container:
+      image: batonogov/pyinstaller-windows:latest
+      options: --rm
+      volumes:
+        - ${{ github.workspace }}:/src/
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Run PyInstaller
+      run: |
+        pyinstaller BTClockOTA.spec
+
+    - name: Archive artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-artifacts
+        path: dist/
