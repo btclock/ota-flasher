@@ -1,3 +1,4 @@
+-f https://wxpython.org/Phoenix/snapshot-builds/
 Requests==2.32.3
 wxPython==4.2.2a1.dev5670+a207b407
 zeroconf==0.132.2

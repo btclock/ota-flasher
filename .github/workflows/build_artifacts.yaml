@@ -1,12 +1,6 @@
-name: Build artifacts
+name: Build artifacts and make release
 
-on:
-  workflow_dispatch:
-    inputs:
-      directory:
-        description: 'Directory to run Docker command in'
-        required: true
-        default: '.'
+on: workflow_dispatch
 
 jobs:
   build-windows:
@@ -37,9 +31,23 @@ jobs:
       run: |
         docker run --rm \
           --volume "${{ github.workspace }}:/src/" \
+          --env SPECFILE=./BTClockOTA.spec \
           batonogov/pyinstaller-windows:latest
+    - name: Get current block
+      id: getBlockHeight
+      run: echo "blockHeight=$(curl -s https://mempool.space/api/blocks/tip/height)" >> $GITHUB_OUTPUT
     - name: Archive artifacts
       uses: actions/upload-artifact@v4
       with:
         name: windows-artifacts
         path: dist/
+    - name: Create release
+      uses: ncipollo/release-action@v1
+      with:
+        tag: ${{ steps.getBlockHeight.outputs.blockHeight }}
+        commit: main
+        name: release-${{ steps.getBlockHeight.outputs.blockHeight }}
+        artifacts: 'dist/**'
+        allowUpdates: true
+        removeArtifacts: true
+        makeLatest: true
