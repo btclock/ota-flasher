@@ -12,20 +12,24 @@ jobs:
   build-windows:
     runs-on:
       - ubuntu-latest
-    container:
-      image: batonogov/pyinstaller-windows:latest
-      options: --rm
-      volumes:
-        - ${{ github.workspace }}:/src/
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-
-    - name: Run PyInstaller
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+    - name: Cache Docker layers
+      uses: actions/cache@v4
+      with:
+        path: /tmp/.buildx-cache
+        key: ${{ runner.os }}-buildx-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-buildx-
+    - name: Run Docker Container
       run: |
-        pyinstaller BTClockOTA.spec
-
+        docker run --rm \
+          --volume "${{ github.workspace }}:$(pwd):/src/" \
+          batonogov/pyinstaller-windows:latest
     - name: Archive artifacts
       uses: actions/upload-artifact@v4
       with:
