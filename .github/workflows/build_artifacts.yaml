@@ -38,7 +38,7 @@ jobs:
         docker run --rm \
           --volume "/tmp/cachepip:/wine/drive_c/users/root/appdata/local/pip/cache/" \ 
           --volume "${{ github.workspace }}:/src/" \
-          batonogov/pyinstaller-windows:latest
+          batonogov/pyinstaller-windows:latest pyinstaller
     - name: Archive artifacts
       uses: actions/upload-artifact@v4
       with:
