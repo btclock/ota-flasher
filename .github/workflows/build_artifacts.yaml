@@ -36,7 +36,7 @@ jobs:
     - name: Run Docker Container
       run: |
         docker run --rm \
-          --volume "/tmp/.cachepip/wine/drive_c/users/root/appdata/local/pip/cache" \ 
+          --volume "/tmp/.cachepip:/wine/drive_c/users/root/appdata/local/pip/cache" \ 
           --volume "${{ github.workspace }}:/src/" \
           batonogov/pyinstaller-windows:latest
     - name: Archive artifacts
