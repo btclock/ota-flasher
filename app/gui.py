@@ -139,8 +139,9 @@ class BTClockOTAUpdater(wx.Frame):
         wx.CallAfter(self.fetch_latest_release)
 
     def on_item_selected(self, event):
-        self.update_button.Enable()
-        self.update_fs_button.Enable()
+        if self.release_name != "":
+            self.update_button.Enable()
+            self.update_fs_button.Enable()
         self.identify_button.Enable()
         self.open_webif_button.Enable()
 
@@ -292,6 +293,8 @@ class BTClockOTAUpdater(wx.Frame):
     def fetch_latest_release(self):
         repo = "btclock/btclock_v3"
 
+        if not os.path.exists("firmware"):
+            os.makedirs("firmware")
         filenames_to_download = ["lolin_s3_mini_213epd_firmware.bin", "btclock_rev_b_213epd_firmware.bin", "littlefs.bin"]
         url = f"https://api.github.com/repos/{repo}/releases/latest"
         try:
@@ -337,7 +340,8 @@ class BTClockOTAUpdater(wx.Frame):
         local_filename = f"{release_name}_{url.split('/')[-1]}"
         response = requests.get(url, stream=True)
         total_length = response.headers.get('content-length')
-
+        if not os.path.exists("firmware"):
+            os.makedirs("firmware")
         if os.path.exists(f"firmware/{local_filename}"):
             wx.CallAfter(self.SetStatusText, f"{local_filename} is already downloaded")
             return
