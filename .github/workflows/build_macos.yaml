@@ -37,23 +37,29 @@ jobs:
       - name: Get current block
         id: getBlockHeight
         run: echo "blockHeight=$(curl -s https://mempool.space/api/blocks/tip/height)" >> $GITHUB_OUTPUT
+      - name: Zip the app bundle
+        run: |
+          cd dist
+          zip -r BTClockOTA-macos-universal2.zip BTClockOTA.app
       - name: Create DMG
         run: |
           mkdir dmg_temp
           cp -R dist/BTClockOTA.app dmg_temp/
           # Create the DMG file
-          hdiutil create -volname "BTClockOTA" -srcfolder dmg_temp -ov -format UDZO "dist/BTClockOTA.dmg"  
+          hdiutil create -volname "BTClockOTA" -srcfolder dmg_temp -ov -format UDZO "dist/BTClockOTA-universal.dmg"  
       - name: Archive artifacts
         uses: actions/upload-artifact@v4
         with:
           name: macos-artifacts
-          path: dist/BTClockOTA.dmg
+          path: |
+            dist/*
+            !dist/BTClockOTA.app
       - name: Create release
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ steps.getBlockHeight.outputs.blockHeight }}
           commit: main
           name: release-${{ steps.getBlockHeight.outputs.blockHeight }}
-          artifacts: "dist/*.dmg"
+          artifacts: "dist/*.dmg,dist/*.zip"
           allowUpdates: true
           makeLatest: true
