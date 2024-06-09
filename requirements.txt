@@ -1,6 +1,6 @@
 -f https://wxpython.org/Phoenix/snapshot-builds/
 Requests==2.32.3
-wxPython==4.2.2a1.dev5670+a207b407
+wxPython>=4.2.1
 zeroconf==0.132.2
 esptool==4.7.0
 pyserial==3.5
