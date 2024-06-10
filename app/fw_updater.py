@@ -7,6 +7,8 @@ import esptool
 import serial
 import wx
 
+from app.utils import get_app_data_folder
+
 
 class FwUpdater:
     update_progress = None
@@ -72,7 +74,7 @@ class FwUpdater:
         if (hw_rev == "REV_B_EPD_2_13"):
             model_name = "btclock_rev_b_213epd"
 
-        local_filename = f"firmware/{
+        local_filename = f"{get_app_data_folder()}/{
             release_name}_{model_name}_firmware.bin"
 
         self.updatingName = address
@@ -88,7 +90,7 @@ class FwUpdater:
 
     def start_fs_update(self, release_name, address):
         # Path to the firmware file
-        local_filename = f"firmware/{release_name}_littlefs.bin"
+        local_filename = f"{get_app_data_folder()}/{release_name}_littlefs.bin"
 
         self.updatingName = address
         self.currentlyUpdating = True

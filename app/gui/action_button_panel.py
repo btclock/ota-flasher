@@ -27,7 +27,7 @@ class ActionButtonPanel(wx.Panel):
         
         self.update_button = wx.Button(self, label="Update Firmware")
         self.update_button.Bind(wx.EVT_BUTTON, self.on_click_update_firmware)
-        self.update_fs_button = wx.Button(self, label="Update Filesystem")
+        self.update_fs_button = wx.Button(self, label="Update WebUI")
         self.update_fs_button.Bind(wx.EVT_BUTTON, self.on_click_update_fs)
 
         self.identify_button = wx.Button(self, label="Identify")

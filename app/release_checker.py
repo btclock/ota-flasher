@@ -6,9 +6,9 @@ import wx
 from typing import Callable
 from datetime import datetime, timedelta
 
-from app.utils import keep_latest_versions
+from app.utils import get_app_data_folder, keep_latest_versions
 
-CACHE_FILE = 'firmware/cache.json'
+CACHE_FILE = get_app_data_folder() + '/cache.json'
 CACHE_DURATION = timedelta(minutes=30)
 
 
@@ -38,8 +38,6 @@ class ReleaseChecker:
         cache = self.load_cache()
         now = datetime.now()
 
-        if not os.path.exists("firmware"):
-            os.makedirs("firmware")
 
         if 'latest_release' in cache and (now - datetime.fromisoformat(cache['latest_release']['timestamp'])) < CACHE_DURATION:
             latest_release = cache['latest_release']['data']
@@ -106,14 +104,12 @@ class ReleaseChecker:
         '''Downloads Fimware Files'''
         local_filename = f"{release_name}_{url.split('/')[-1]}"
        
-        if not os.path.exists("firmware"):
-            os.makedirs("firmware")
-        if os.path.exists(f"firmware/{local_filename}"):
+        if os.path.exists(f"{get_app_data_folder()}/{local_filename}"):
             return
 
         response = requests.get(url, stream=True)
         total_length = response.headers.get('content-length')
-        keep_latest_versions('firmware', 2)
+        keep_latest_versions(get_app_data_folder(), 2)
 
         if total_length is None:
             raise ReleaseCheckerException("No content length header")
@@ -121,7 +117,7 @@ class ReleaseChecker:
             total_length = int(total_length)
             chunk_size = 1024
             num_chunks = total_length // chunk_size
-            with open(f"firmware/{local_filename}", 'wb') as f:
+            with open(f"{get_app_data_folder()}/{local_filename}", 'wb') as f:
                 for i, chunk in enumerate(response.iter_content(chunk_size=chunk_size)):
                     if chunk:
                         f.write(chunk)

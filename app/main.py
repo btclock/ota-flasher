@@ -1,5 +1,6 @@
 import concurrent.futures
 import logging
+import traceback
 
 import serial
 from app.gui.action_button_panel import ActionButtonPanel
@@ -15,11 +16,14 @@ from app import espota
 from app.api import ApiHandler
 from app.fw_updater import FwUpdater
 from app.gui.devices_panel import DevicesPanel
+from app.utils import get_app_data_folder
 from app.zeroconf_listener import ZeroconfListener
 
 from app.espota import FLASH, SPIFFS
 
-
+class BTClockOTAApp(wx.App):
+    def OnInit(self):
+        return True
 class RichTextCtrlHandler(logging.Handler):
     def __init__(self, ctrl):
         super().__init__()
@@ -27,7 +31,7 @@ class RichTextCtrlHandler(logging.Handler):
 
     def emit(self, record):
         msg = self.format(record)
-        wx.CallAfter(self.append_text, msg + '\n')
+        wx.CallAfter(self.append_text, "\n" + msg)
 
     def append_text(self, text):
         self.ctrl.AppendText(text)
@@ -46,6 +50,7 @@ class BTClockOTAUpdater(wx.Frame):
 
     def __init__(self, parent, title):
         wx.Frame.__init__(self, parent, title=title, size=(800, 500))
+
         self.SetMinSize((800, 500))
         self.releaseChecker = ReleaseChecker()
         self.zeroconf = Zeroconf()
@@ -62,7 +67,7 @@ class BTClockOTAUpdater(wx.Frame):
         self.log_ctrl.SetFont(monospace_font)
 
         handler = RichTextCtrlHandler(self.log_ctrl)
-        handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+        handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s', '%H:%M:%S'))
         logging.getLogger().addHandler(handler)
         logging.getLogger().setLevel(logging.DEBUG)
 
@@ -93,7 +98,7 @@ class BTClockOTAUpdater(wx.Frame):
         self.setup_ui()
 
         wx.CallAfter(self.fetch_latest_release_async)
-
+        wx.YieldIfNeeded()
     def setup_ui(self):
         self.setup_menubar()
         self.status_bar = self.CreateStatusBar(2)
@@ -102,6 +107,8 @@ class BTClockOTAUpdater(wx.Frame):
 
     def setup_menubar(self):
         filemenu = wx.Menu()
+        menuOpenDownloadDir = filemenu.Append(
+            wx.ID_OPEN, "&Open Download Dir", " Open the directory with firmware files and cache")
         menuAbout = filemenu.Append(
             wx.ID_ABOUT, "&About", " Information about this program")
         menuExit = filemenu.Append(
@@ -109,8 +116,9 @@ class BTClockOTAUpdater(wx.Frame):
 
         menuBar = wx.MenuBar()
         menuBar.Append(filemenu, "&File")
-        self.SetMenuBar(menuBar)
 
+        self.SetMenuBar(menuBar)
+        self.Bind(wx.EVT_MENU, self.OnOpenDownloadFolder, menuOpenDownloadDir)
         self.Bind(wx.EVT_MENU, self.OnAbout, menuAbout)
         self.Bind(wx.EVT_MENU, self.OnExit, menuExit)
 
@@ -175,6 +183,9 @@ class BTClockOTAUpdater(wx.Frame):
 
     def fetch_latest_release_async(self):
         # Start a new thread to execute fetch_latest_release
+        app_folder = get_app_data_folder()
+        if not os.path.exists(app_folder):
+            os.makedirs(app_folder)
         executor = concurrent.futures.ThreadPoolExecutor()
         future = executor.submit(self.releaseChecker.fetch_latest_release)
         future.add_done_callback(self.handle_latest_release)
@@ -186,7 +197,11 @@ class BTClockOTAUpdater(wx.Frame):
                                        latest_release}\nCommit: {self.releaseChecker.commit_hash}")
         except Exception as e:
             self.fw_label.SetLabel(f"Error occurred: {str(e)}")
-
+            traceback.print_tb(e.__traceback__)
+            
+    def OnOpenDownloadFolder(self, e):
+        wx.LaunchDefaultBrowser(get_app_data_folder())
+            
     def OnAbout(self, e):
         dlg = wx.MessageDialog(
             self, "An updater for BTClocks", "About BTClock OTA Updater", wx.OK)

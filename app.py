@@ -1,7 +1,8 @@
+from app.main import BTClockOTAUpdater
 import wx
 
-from app.main import BTClockOTAUpdater
-
-app = wx.App(False)
-frame = BTClockOTAUpdater(None, 'BTClock OTA updater')
-app.MainLoop()
+if __name__ == "__main__":
+    app = wx.App(False)
+    frame = BTClockOTAUpdater(None, 'BTClock OTA updater')
+    
+    app.MainLoop()
