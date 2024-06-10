@@ -1,9 +1,11 @@
 import concurrent.futures
+import logging
 
 import serial
 from app.gui.action_button_panel import ActionButtonPanel
 from app.release_checker import ReleaseChecker
 import wx
+import wx.richtext as rt
 
 from zeroconf import ServiceBrowser, Zeroconf
 import os
@@ -18,6 +20,19 @@ from app.zeroconf_listener import ZeroconfListener
 from app.espota import FLASH, SPIFFS
 
 
+class RichTextCtrlHandler(logging.Handler):
+    def __init__(self, ctrl):
+        super().__init__()
+        self.ctrl = ctrl
+
+    def emit(self, record):
+        msg = self.format(record)
+        wx.CallAfter(self.append_text, msg + '\n')
+
+    def append_text(self, text):
+        self.ctrl.AppendText(text)
+        self.ctrl.ShowPosition(self.ctrl.GetLastPosition())
+        
 class SerialPortsComboBox(wx.ComboBox):
     def __init__(self, parent, fw_update):
         self.fw_update = fw_update
@@ -38,13 +53,23 @@ class BTClockOTAUpdater(wx.Frame):
         self.browser = ServiceBrowser(
             self.zeroconf, "_http._tcp.local.", self.listener)
         self.api_handler = ApiHandler()
-        self.fw_updater = FwUpdater(self.call_progress)
+        self.fw_updater = FwUpdater(self.call_progress, self.SetStatusText)
+        
 
         panel = wx.Panel(self)
+        self.log_ctrl = rt.RichTextCtrl(panel, style=wx.TE_MULTILINE | wx.TE_READONLY | wx.TE_RICH2)
+        monospace_font = wx.Font(10, wx.FONTFAMILY_TELETYPE, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL)
+        self.log_ctrl.SetFont(monospace_font)
+
+        handler = RichTextCtrlHandler(self.log_ctrl)
+        handler.setFormatter(logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
+        logging.getLogger().addHandler(handler)
+        logging.getLogger().setLevel(logging.DEBUG)
+
+        
         self.device_list = DevicesPanel(panel)
 
         vbox = wx.BoxSizer(wx.VERTICAL)
-
         vbox.Add(self.device_list, proportion=2,
                  flag=wx.EXPAND | wx.ALL, border=20)
         hbox = wx.BoxSizer(wx.HORIZONTAL)
@@ -62,10 +87,11 @@ class BTClockOTAUpdater(wx.Frame):
 
         self.progress_bar = wx.Gauge(panel, range=100)
         vbox.Add(self.progress_bar, 0, wx.EXPAND | wx.ALL, 20)
+        vbox.Add(self.log_ctrl, 1, flag=wx.EXPAND | wx.ALL, border=20)
 
         panel.SetSizer(vbox)
-
         self.setup_ui()
+
         wx.CallAfter(self.fetch_latest_release_async)
 
     def setup_ui(self):

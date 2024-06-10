@@ -102,8 +102,8 @@ def serve(remote_addr, local_addr, remote_port, local_port, password, filename, 
     inv_tries = 0
     data = ""
     msg = "Sending invitation to %s " % remote_addr
-    sys.stderr.write(msg)
-    sys.stderr.flush()
+    logging.info(msg)
+
     while inv_tries < 10:
         inv_tries += 1
         sock2 = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -111,8 +111,7 @@ def serve(remote_addr, local_addr, remote_port, local_port, password, filename, 
         try:
             sent = sock2.sendto(message.encode(), remote_address)  # noqa: F841
         except:  # noqa: E722
-            sys.stderr.write("failed\n")
-            sys.stderr.flush()
+            logging.info("failed\n")
             sock2.close()
             logging.error("Host %s Not Found", remote_addr)
             return 1
@@ -121,11 +120,8 @@ def serve(remote_addr, local_addr, remote_port, local_port, password, filename, 
             data = sock2.recv(37).decode()
             break
         except:  # noqa: E722
-            sys.stderr.write(".")
-            sys.stderr.flush()
+#            logging.info(".")
             sock2.close()
-    sys.stderr.write("\n")
-    sys.stderr.flush()
     if inv_tries == 10:
         logging.error("No response from the ESP")
         return 1
@@ -177,8 +173,7 @@ def serve(remote_addr, local_addr, remote_port, local_port, password, filename, 
             if PROGRESS:
                 progress_handler(0)
             else:
-                sys.stderr.write("Uploading")
-                sys.stderr.flush()
+                logging.info("Uploading")
             offset = 0
             while True:
                 chunk = f.read(1024)
@@ -192,7 +187,6 @@ def serve(remote_addr, local_addr, remote_port, local_port, password, filename, 
                     res = connection.recv(10)
                     last_response_contained_ok = "OK" in res.decode()
                 except Exception as e:
-                    sys.stderr.write("\n")
                     logging.error("Error Uploading: %s", str(e))
                     connection.close()
                     return 1
@@ -202,7 +196,6 @@ def serve(remote_addr, local_addr, remote_port, local_port, password, filename, 
                 connection.close()
                 return 0
 
-            sys.stderr.write("\n")
             logging.info("Waiting for result...")
             count = 0
             while count < 5:

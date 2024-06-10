@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import requests
 import wx
@@ -104,13 +105,14 @@ class ReleaseChecker:
     def download_file(self, url, release_name):
         '''Downloads Fimware Files'''
         local_filename = f"{release_name}_{url.split('/')[-1]}"
-        response = requests.get(url, stream=True)
-        total_length = response.headers.get('content-length')
+       
         if not os.path.exists("firmware"):
             os.makedirs("firmware")
         if os.path.exists(f"firmware/{local_filename}"):
             return
 
+        response = requests.get(url, stream=True)
+        total_length = response.headers.get('content-length')
         keep_latest_versions('firmware', 2)
 
         if total_length is None:

@@ -32,7 +32,7 @@ jobs:
       run: |
         docker run --rm \
           --volume "${{ github.workspace }}:/src/" \
-          --env SPECFILE=./BTClockOTA.spec \
+          --env SPECFILE=./BTClockOTA-debug.spec \
           batonogov/pyinstaller-windows:latest
     # - name: Get current block
     #   id: getBlockHeight

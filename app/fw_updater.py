@@ -12,8 +12,9 @@ class FwUpdater:
     update_progress = None
     currentlyUpdating = False
 
-    def __init__(self, update_progress):
+    def __init__(self, update_progress, event_cb):
         self.update_progress = update_progress
+        self.event_cb = event_cb
 
     def get_serial_ports(self):
         ports = serial.tools.list_ports.comports()
@@ -76,6 +77,9 @@ class FwUpdater:
 
         self.updatingName = address
         self.currentlyUpdating = True
+        
+        if self.event_cb is not None:
+            self.event_cb("Starting Firmware update")
 
         if os.path.exists(os.path.abspath(local_filename)):
             thread = Thread(target=self.run_fs_update, args=(
@@ -88,6 +92,9 @@ class FwUpdater:
 
         self.updatingName = address
         self.currentlyUpdating = True
+        
+        if self.event_cb is not None:
+            self.event_cb("Starting WebUI update")
 
         if os.path.exists(os.path.abspath(local_filename)):
             thread = Thread(target=self.run_fs_update, args=(
