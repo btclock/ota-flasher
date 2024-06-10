@@ -7,7 +7,7 @@ a = Analysis(
     binaries=[],
     datas=[],
     hiddenimports=['zeroconf._utils.ipaddress',
-                   'zeroconf._handlers.answers', 'pyserial', 'wx'],
+                   'zeroconf._handlers.answers', 'pyserial', 'wx', 'wx._xml'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
