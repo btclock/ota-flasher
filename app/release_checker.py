@@ -60,7 +60,10 @@ class ReleaseChecker:
         self.release_name = release_name
 
         filenames_to_download = ["lolin_s3_mini_213epd_firmware.bin",
-                                 "btclock_rev_b_213epd_firmware.bin", "littlefs.bin"]
+                                 "lolin_s3_mini_29epd_firmware.bin",
+                                 "btclock_v8_213epd_firmware.bin",
+                                 "btclock_rev_b_213epd_firmware.bin",
+                                 "littlefs.bin"]
 
         asset_urls = [asset['browser_download_url']
                       for asset in latest_release['assets'] if asset['name'] in filenames_to_download]

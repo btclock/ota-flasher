@@ -70,9 +70,14 @@ class FwUpdater:
     def start_firmware_update(self, release_name, address, hw_rev):
 #        self.SetStatusText(f"Starting firmware update")
 
-        model_name = "lolin_s3_mini_213epd"
-        if (hw_rev == "REV_B_EPD_2_13"):
-            model_name = "btclock_rev_b_213epd"
+        hw_rev_to_model = {
+            "REV_B_EPD_2_13": "btclock_rev_b_213epd",
+            "REV_V8_EPD_2_13": "btclock_v8_213epd",
+            "REV_A_EPD_2_9": "lolin_s3_mini_29epd"
+        }
+
+        model_name = hw_rev_to_model.get(hw_rev, "lolin_s3_mini_213epd")
+
 
         local_filename = f"{get_app_data_folder()}/{
             release_name}_{model_name}_firmware.bin"
