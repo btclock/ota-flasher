@@ -11,6 +11,7 @@ from app.utils import get_app_data_folder, keep_latest_versions
 CACHE_FILE = get_app_data_folder() + '/cache.json'
 CACHE_DURATION = timedelta(minutes=30)
 
+LATEST_RELEASE_ENDPOINT = "https://git.rof.tools/api/v1/repos/mirrors/btclock_v3/tags"
 
 class ReleaseChecker:
     '''Release Checker for firmware updates'''
@@ -34,7 +35,7 @@ class ReleaseChecker:
 
     def fetch_latest_release(self):
         '''Fetch latest firmware release from GitHub'''
-        repo = "btclock/btclock_v3"
+        repo = "mirrors/btclock_v3"
         cache = self.load_cache()
         now = datetime.now()
 
@@ -42,7 +43,8 @@ class ReleaseChecker:
         if 'latest_release' in cache and (now - datetime.fromisoformat(cache['latest_release']['timestamp'])) < CACHE_DURATION:
             latest_release = cache['latest_release']['data']
         else:
-            url = f"https://api.github.com/repos/{repo}/releases/latest"
+#            url = f"https://api.github.com/repos/{repo}/releases/latest"
+            url = f"https://git.rof.tools/api/v1/repos/{repo}/releases/latest"
             try:
                 response = requests.get(url)
                 response.raise_for_status()
@@ -72,8 +74,9 @@ class ReleaseChecker:
             for asset_url in asset_urls:
                 self.download_file(asset_url, release_name)
 
-            ref_url = f"https://api.github.com/repos/{
-                repo}/git/ref/tags/{release_name}"
+            ref_url = f"https://git.rof.tools/api/v1/repos/{repo}/tags/{release_name}"
+            #ref_url = f"https://api.github.com/repos/{
+#                repo}/git/ref/tags/{release_name}"
             if ref_url in cache and (now - datetime.fromisoformat(cache[ref_url]['timestamp'])) < CACHE_DURATION:
                 commit_hash = cache[ref_url]['data']
 
@@ -81,15 +84,8 @@ class ReleaseChecker:
                 response = requests.get(ref_url)
                 response.raise_for_status()
                 ref_info = response.json()
-                if ref_info["object"]["type"] == "commit":
-                    commit_hash = ref_info["object"]["sha"]
-                else:
-                    tag_url = f"https://api.github.com/repos/{
-                        repo}/git/tags/{ref_info['object']['sha']}"
-                    response = requests.get(tag_url)
-                    response.raise_for_status()
-                    tag_info = response.json()
-                    commit_hash = tag_info["object"]["sha"]
+                commit_hash = ref_info["commit"]["sha"]
+             
                 cache[ref_url] = {
                     'data': commit_hash,
                     'timestamp': now.isoformat()
